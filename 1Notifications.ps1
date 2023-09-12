@@ -1,43 +1,24 @@
+# Define the list of expected members in the Administrators group
+$expectedMembers = @("Administrator", "MiPCSAdmin")
 
-# Type flag values:
+# Get the members of the Administrators group
+$administratorsGroup = [ADSI]"WinNT://./Administrators,group"
+$members = $administratorsGroup.Invoke("Members") | ForEach-Object {
+    $_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)
+}
 
-# 0 — OK button;
-# 1 — OK and Cancel buttons;
-# 2 — Stop, Retry and Skip buttons;
-# 3 — Yes, No and Cancel buttons;
-# 4 — Yes and No buttons;
-# 5 — Retry and Cancel buttons;
-# 16 — Stop icon;
-# 32 — Question icon;
-# 48 — Exclamation icon;
-# 64 — Information icon.
+# Check if the members match the expected list
+$additionalMembers = $members | Where-Object { $_ -notin $expectedMembers }
 
+# Display the appropriate notification
+if ($additionalMembers.Count -eq 0) {
+    # There are no additional members
+    [System.Windows.Forms.MessageBox]::Show("The computer is ready to use", "Computer Status", "OK", [System.Windows.Forms.MessageBoxIcon]::Information)
+} else {
+    # There are additional members
+    [System.Windows.Forms.MessageBox]::Show("Please DO NOT USE this computer at this moment.
 
-#Returns integer to show which was clicked by user.
-#-1 — timeout;
-# 1 — OK button;
-# 2 — Cancel button;
-# 3 — Stop button;
-# 4 — Retry button;
-# 5 — Skip button;
-# 6 — Yes button;
-# 7 — No button.
+We are setting up this computer. It will restart as we complete", "Configuration is in Progress", "OK", [System.Windows.Forms.MessageBoxIcon]::Stop)
 
-# Calculate the time when the restart will occur
-#$restartTime = (Get-Date).AddMinutes(60)
-
-# Convert the restart time to user-friendly format
-#$restartTimeString = $restartTime.ToString('HH:mm')
-
-
-$title = "Configuration is in Progress" # Declare title
-
-# Declare message
-$message = " Please DO NOT USE this computer at this moment.
-
-We are setting up this computer. It will restart as we complete.
-"
-
-# Display the notification
-Add-Type -AssemblyName PresentationFramework
-[void] [System.Windows.MessageBox]::Show($message, $title,0,16)
+shutdown.exe /r -t 2400
+}
